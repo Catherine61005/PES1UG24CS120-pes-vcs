@@ -242,4 +242,47 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
         return -1;
     }
     rewind(f);
+
+    // Read entire file
+    unsigned char *buf = malloc(file_size);
+    if (!buf)
+    {
+        fclose(f);
+        return -1;
+    }
+
+    if (fread(buf, 1, file_size, f) != (size_t)file_size)
+    {
+        free(buf);
+        fclose(f);
+        return -1;
+    }
+    fclose(f);
+
+    // Step 3: Parse header "<type> <size>\0"
+    unsigned char *nul = memchr(buf, '\0', file_size);
+    if (!nul)
+    {
+        free(buf);
+        return -1;
+    }
+
+    size_t header_len = nul - buf + 1;
+
+    char type_str[16];
+    size_t size;
+    if (sscanf((char *)buf, "%15s %zu", type_str, &size) != 2)
+    {
+        free(buf);
+        return -1;
+    }
+
+    // Step 4: Verify hash
+    ObjectID computed;
+    compute_hash(buf, file_size, &computed);
+    if (memcmp(computed.hash, id->hash, HASH_SIZE) != 0)
+    {
+        free(buf);
+        return -1;
+    }
 }
