@@ -26,6 +26,9 @@
 #include "pes.h"
 #include "tree.h"
 
+// Declare missing functions
+int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out);
+uint32_t get_file_mode(const char *path);
 
 // ─── PROVIDED ────────────────────────────────────────────────────────────────
 
