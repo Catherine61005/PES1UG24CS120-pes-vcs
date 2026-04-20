@@ -26,6 +26,7 @@
 #include "pes.h"
 #include "tree.h"
 
+
 // ─── PROVIDED ────────────────────────────────────────────────────────────────
 
 // Find an index entry by path (linear scan).
@@ -136,11 +137,50 @@ int index_status(const Index *index) {
 //   - hex_to_hash                      : converting the parsed string to ObjectID
 //
 // Returns 0 on success, -1 on error.
-int index_load(Index *index) {
-    // TODO: Implement index loading
-    // (See Lab Appendix for logical steps)
-    (void)index;
-    return -1;
+int index_load(Index *index)
+{
+    index->count = 0;
+
+    FILE *f = fopen(".pes/index", "r");
+    if (!f)
+    {
+        // File doesn't exist → empty index (NOT an error)
+        return 0;
+    }
+
+    char line[1024];
+
+    while (fgets(line, sizeof(line), f))
+    {
+        if (index->count >= MAX_INDEX_ENTRIES)
+            break;
+
+        IndexEntry *e = &index->entries[index->count];
+
+        char hash_hex[HASH_HEX_SIZE + 1];
+
+        if (sscanf(line, "%o %s %lu %u %s",
+                   &e->mode,
+                   hash_hex,
+                   &e->mtime_sec,
+                   &e->size,
+                   e->path) != 5)
+        {
+            fclose(f);
+            return -1;
+        }
+
+        if (hex_to_hash(hash_hex, &e->hash) != 0)
+        {
+            fclose(f);
+            return -1;
+        }
+
+        index->count++;
+    }
+
+    fclose(f);
+    return 0;
 }
 
 // Save the index to .pes/index atomically.
