@@ -248,9 +248,79 @@ int index_save(const Index *index)
 //   - index_find                       : checking if the file is already staged
 //
 // Returns 0 on success, -1 on error.
-int index_add(Index *index, const char *path) {
-    // TODO: Implement file staging
-    // (See Lab Appendix for logical steps)
-    (void)index; (void)path;
-    return -1;
+
+int index_add(Index *index, const char *path)
+{
+    // Step 1: Read file
+    FILE *f = fopen(path, "rb");
+    if (!f)
+        return -1;
+
+    if (fseek(f, 0, SEEK_END) != 0)
+    {
+        fclose(f);
+        return -1;
+    }
+    long size = ftell(f);
+    if (size < 0)
+    {
+        fclose(f);
+        return -1;
+    }
+    rewind(f);
+
+    void *data = malloc(size);
+    if (!data)
+    {
+        fclose(f);
+        return -1;
+    }
+
+    if (fread(data, 1, size, f) != (size_t)size)
+    {
+        free(data);
+        fclose(f);
+        return -1;
+    }
+    fclose(f);
+
+    printf("Adding file: %s\n", path);
+    // Step 2: Write blob
+    ObjectID id;
+    if (object_write(OBJ_BLOB, data, size, &id) != 0)
+    {
+        free(data);
+        return -1;
+    }
+
+    free(data);
+
+    // Step 3: Get file metadata
+    struct stat st;
+    if (stat(path, &st) != 0)
+        return -1;
+
+    // Step 4: Check if already exists
+    IndexEntry *e = index_find(index, path);
+
+    if (e == NULL)
+    {
+        if (index->count >= MAX_INDEX_ENTRIES)
+            return -1;
+
+        e = &index->entries[index->count];
+        memset(e, 0, sizeof(IndexEntry));
+        index->count++;
+    }
+
+    // Step 5: Fill entry
+    e->mode = get_file_mode(path);
+    e->hash = id;
+    e->mtime_sec = st.st_mtime; // adjust if your field name differs
+    e->size = st.st_size;
+
+    strncpy(e->path, path, sizeof(e->path));
+    e->path[sizeof(e->path) - 1] = '\0';
+
+    return 0;
 }
