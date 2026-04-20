@@ -130,6 +130,29 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 
     ObjectID id;
     compute_hash(full_obj, total_len, &id);
+
+    if (object_exists(&id))
+    {
+        *id_out = id;
+        free(full_obj);
+        return 0;
+    }
+    // Step 5: Prepare object path
+    char path[512];
+    object_path(&id, path, sizeof(path));
+
+    // Extract directory path (.pes/objects/XX/)
+    char dir[512];
+    snprintf(dir, sizeof(dir), "%s", path);
+    char *slash = strrchr(dir, '/');
+    if (!slash)
+    {
+        free(full_obj);
+        return -1;
+    }
+    *slash = '\0';
+
+    mkdir(dir, 0755);
 }
 // Read an object from the store.
 //
