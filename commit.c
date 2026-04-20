@@ -270,3 +270,20 @@ int commit_create(const char *message, ObjectID *commit_id_out)
         return -1;
     }
 
+    // Step 6: Write commit object
+    if (object_write(OBJ_COMMIT, data, len, commit_id_out) != 0)
+    {
+        free(data);
+        return -1;
+    }
+
+    free(data);
+
+    // Step 7: Update HEAD
+    if (head_update(commit_id_out) != 0)
+    {
+        return -1;
+    }
+
+    return 0;
+}
